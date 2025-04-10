@@ -1,6 +1,6 @@
-# n8n Workflow Automation Platform
+# n8n Workflow Automation Platform - Localhost Setup
 
-This project provides a production-ready n8n installation with PostgreSQL for data persistence. It's designed for security, reliability, and ease of management.
+This project provides a reliable, secure n8n installation with PostgreSQL for data persistence, designed specifically for self-hosting on localhost environments.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ This project provides a production-ready n8n installation with PostgreSQL for da
 
 ## Features
 
-- Complete n8n setup with PostgreSQL database
+- Complete n8n setup with PostgreSQL database for localhost use
 - Docker-based deployment for consistency and isolation
 - Automated backup and recovery procedures
 - Secure configuration with credentials management
@@ -27,13 +27,13 @@ This project provides a production-ready n8n installation with PostgreSQL for da
 ## Requirements
 
 - Docker and Docker Compose
-- macOS (tested) or Linux environment
+- macOS (tested) or Linux environment on your local machine
 - 2GB+ RAM recommended
 - 10GB+ free disk space
 
 ## Installation
 
-1. Clone this repository or download and extract it to your desired location.
+1. Clone this repository or download and extract it to your desired location on your local machine.
 
 2. Navigate to the project directory:
    ```bash
@@ -69,10 +69,10 @@ This project provides a production-ready n8n installation with PostgreSQL for da
 
 ### Using the Makefile
 
-This project includes a Makefile to simplify common operations:
+This project includes a Makefile to simplify managing your localhost n8n installation:
 
 ```bash
-# View available commands
+# View all available commands
 make help
 
 # Start all services
@@ -96,8 +96,11 @@ make update N8N_VERSION=latest POSTGRES_VERSION=14.17-alpine
 # View logs
 make logs SERVICE=n8n LINES=100
 
-# Set up automated backups
+# Set up automated backups on your local machine
 sudo make setup-cron
+
+# Clean up everything (removes all data)
+make clean
 ```
 
 ## Configuration
@@ -207,7 +210,7 @@ sudo ./scripts/setup-cron.sh
 
 ### Automated Backups
 
-To set up automated daily backups:
+To set up automated daily backups on your local machine:
 
 ```bash
 sudo ./scripts/setup-cron.sh
@@ -235,7 +238,7 @@ To restore from a backup:
 
 ## Updating
 
-To update n8n to the latest version:
+To update n8n to the latest version on your localhost installation:
 
 ```bash
 ./scripts/update.sh -n latest
@@ -269,11 +272,7 @@ The services are configured with a dedicated Docker network for isolation.
 
 ### Resource Limits
 
-Resource limits are set to prevent resource exhaustion attacks.
-
-### HTTPS Configuration
-
-For production deployments exposed to the internet, consider configuring HTTPS with a reverse proxy like Nginx or Traefik.
+Resource limits are set to prevent resource exhaustion.
 
 ## Troubleshooting
 
@@ -320,3 +319,7 @@ docker compose logs -f n8n
 - Create a manual backup before retrying
 - Check compatibility between n8n version and PostgreSQL version
 - View the update log for specific errors
+
+## Final Notes
+
+This setup provides a robust n8n environment on your local machine, with all the tools needed for backup, recovery, and maintenance. If you encounter any issues not covered by the troubleshooting section, check the n8n documentation or community forums for additional support.

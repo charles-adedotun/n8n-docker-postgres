@@ -59,9 +59,7 @@ services:
 
 volumes:
   n8n_data:
-    name: n8n_data
   postgres_data:
-    name: postgres_data
 
 networks:
   n8n-network:

@@ -87,14 +87,16 @@ validate_env_file() {
     if [ "$POSTGRES_PASSWORD" == "change_me_in_production" ]; then
         log_warning "Default PostgreSQL password detected. Generating a secure password..."
         POSTGRES_PASSWORD=$(openssl rand -base64 24)
-        sed -i '' "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$POSTGRES_PASSWORD/" "$ENV_FILE"
+        # Use a temporary file for the substitution to avoid issues with special characters
+        sed "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$POSTGRES_PASSWORD|" "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
         log_info "PostgreSQL password updated."
     fi
     
     if [ "$N8N_ENCRYPTION_KEY" == "change_me_in_production_with_32+_characters" ]; then
         log_warning "Default encryption key detected. Generating a secure key..."
         N8N_ENCRYPTION_KEY=$(openssl rand -base64 32)
-        sed -i '' "s/N8N_ENCRYPTION_KEY=.*/N8N_ENCRYPTION_KEY=$N8N_ENCRYPTION_KEY/" "$ENV_FILE"
+        # Use a temporary file for the substitution to avoid issues with special characters
+        sed "s|N8N_ENCRYPTION_KEY=.*|N8N_ENCRYPTION_KEY=$N8N_ENCRYPTION_KEY|" "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
         log_info "Encryption key updated."
     fi
     

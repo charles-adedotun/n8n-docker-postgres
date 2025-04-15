@@ -19,7 +19,8 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - n8n-network
     healthcheck:
@@ -40,7 +41,9 @@ services:
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    ports:
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -56,6 +59,8 @@ services:
         limits:
           memory: 1G
           cpus: '0.5'
+    secrets:
+      - postgres_password
 
 volumes:
   n8n_data:
@@ -64,3 +69,7 @@ volumes:
 networks:
   n8n-network:
     driver: bridge
+
+secrets:
+  postgres_password:
+    file: ${PWD}/.secrets/postgres_password

@@ -4,6 +4,9 @@
 # Keep the example template
 !.env.example
 
+# Secrets directory
+.secrets/
+
 # Backup files
 backups/
 *.tar.gz

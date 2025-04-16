@@ -69,9 +69,9 @@ logs: ## View logs (SERVICE=n8n or postgres, LINES=100)
 		docker compose logs --tail=$$LINES $$SERVICE; \
 	fi
 
-setup-cron: ## Set up automated backups (requires sudo)
+setup-cron: ## Set up automated backups
 	@echo -e "$(YELLOW)Setting up automated backups...$(NC)"
-	@sudo $(SCRIPTS_DIR)/setup-cron.sh
+	@$(SCRIPTS_DIR)/setup-cron.sh
 	@echo -e "$(GREEN)Automated backups set up.$(NC)"
 
 clean: ## Remove all containers, volumes, and networks

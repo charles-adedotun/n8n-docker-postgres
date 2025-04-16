@@ -98,7 +98,7 @@ make update N8N_VERSION=latest POSTGRES_VERSION=14.17-alpine
 make logs SERVICE=n8n LINES=100
 
 # Set up automated backups on your local machine
-sudo make setup-cron
+make setup-cron
 
 # Clean up everything (removes all data)
 make clean
@@ -211,27 +211,27 @@ Options:
 
 ### setup-cron.sh
 
-Sets up automated daily backups:
+Sets up automated backups every 6 hours:
 - Creates a cron job (Linux) or launchd task (macOS)
 - Configures log rotation
-- Runs daily at 2:00 AM by default
+- Runs at 00:00, 06:00, 12:00, and 18:00 by default
 
-Usage (must be run as root):
+Usage:
 ```bash
-sudo ./scripts/setup-cron.sh
+./scripts/setup-cron.sh
 ```
 
 ## Backup and Recovery
 
 ### Automated Backups
 
-To set up automated daily backups on your local machine:
+To set up automated backups on your local machine that run every 6 hours:
 
 ```bash
-sudo ./scripts/setup-cron.sh
+./scripts/setup-cron.sh
 ```
 
-This will create a cron job that runs the backup script daily at 2:00 AM.
+This will create a job that runs the backup script at 00:00, 06:00, 12:00, and 18:00 every day.
 
 ### Manual Backups
 

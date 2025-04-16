@@ -10,6 +10,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$PROJECT_DIR/.env"
 LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/restore.log"
+DATA_DIR="$PROJECT_DIR/data"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -154,21 +155,38 @@ log_info "PostgreSQL container stopped"
 if [ -d "$TEMP_DIR/n8n_data" ]; then
     log_info "Restoring n8n data directory..."
     
-    # Start n8n container with a temporary command to copy files
-    log_info "Starting n8n container temporarily..."
-    docker compose up -d n8n
-    sleep 5
+    # Make sure data directory exists
+    mkdir -p "$DATA_DIR/n8n"
     
-    # Copy n8n data
+    # Clear existing data directory
+    log_info "Clearing existing n8n data directory..."
+    rm -rf "$DATA_DIR/n8n/"*
+    
+    # Copy data from backup
     log_info "Copying n8n data from backup..."
-    docker compose cp "$TEMP_DIR/n8n_data/." n8n:/home/node/.n8n/
+    cp -r "$TEMP_DIR/n8n_data/." "$DATA_DIR/n8n/"
     
-    # Stop n8n container
-    log_info "Stopping n8n container..."
-    docker compose down
     log_info "n8n data directory restored"
 else
     log_warning "Skipping n8n data directory restoration as it was not found in the backup"
+fi
+
+# Restore pgAdmin data directory
+if [ -d "$TEMP_DIR/pgadmin_data" ]; then
+    log_info "Restoring pgAdmin data directory..."
+    
+    # Make sure data directory exists
+    mkdir -p "$DATA_DIR/pgadmin"
+    
+    # Clear existing data directory
+    log_info "Clearing existing pgAdmin data directory..."
+    rm -rf "$DATA_DIR/pgadmin/"*
+    
+    # Copy data from backup
+    log_info "Copying pgAdmin data from backup..."
+    cp -r "$TEMP_DIR/pgadmin_data/." "$DATA_DIR/pgadmin/"
+    
+    log_info "pgAdmin data directory restored"
 fi
 
 # Start all services
@@ -204,3 +222,4 @@ log_info "Temporary directory removed"
 
 log_info "Restore completed successfully. n8n is now running with restored data."
 log_info "You can access n8n at http://localhost:5678"
+log_info "pgAdmin is available at http://localhost:5050"

@@ -19,10 +19,11 @@ This project provides a reliable, secure n8n installation with PostgreSQL for da
 - Complete n8n setup with PostgreSQL database for localhost use
 - Docker-based deployment for consistency and isolation
 - Automated backup and recovery procedures
-- Secure configuration with credentials management
+- Secure configuration with credentials management via Docker secrets
 - Resource limiting for stability
 - Health monitoring
 - Easy update process
+- Bind mounts for improved data persistence and management
 
 ## Requirements
 
@@ -97,7 +98,7 @@ make update N8N_VERSION=latest POSTGRES_VERSION=14.17-alpine
 make logs SERVICE=n8n LINES=100
 
 # Set up automated backups on your local machine
-sudo make setup-cron
+make setup-cron
 
 # Clean up everything (removes all data)
 make clean
@@ -122,14 +123,27 @@ The following environment variables can be configured in the `.env` file:
 | `TIMEZONE` | Timezone for the application | `UTC` |
 | `BACKUP_RETENTION_DAYS` | Number of days to keep backups | `7` |
 
-### Resource Limits
+### Resource Limits and Reservations
 
 Resource limits are configured in the `docker-compose.yml` file. The default settings are:
 
-- n8n: 1GB RAM, 1 CPU
-- PostgreSQL: 1GB RAM, 0.5 CPU
+- n8n: 
+  - Limits: 1GB RAM, 1 CPU
+  - Reservations: 256MB RAM, 0.2 CPU
+- PostgreSQL: 
+  - Limits: 1GB RAM, 0.5 CPU
+  - Reservations: 128MB RAM, 0.1 CPU
 
 Adjust these values based on your server capabilities and workload requirements.
+
+### Data Persistence
+
+Data is stored in the following locations:
+
+- n8n data: `./data/n8n`
+- PostgreSQL data: `./data/postgres`
+
+These directories are created during setup and mounted as bind mounts for improved data persistence and easier management.
 
 ## Management Scripts
 
@@ -141,7 +155,7 @@ Initial setup script that:
 - Checks for Docker and Docker Compose
 - Validates environment variables
 - Generates secure random credentials
-- Creates required directories
+- Creates required directories and secrets
 - Starts the services
 - Verifies successful startup
 
@@ -157,6 +171,7 @@ Creates backups of the PostgreSQL database and n8n data:
 - Compresses backups to save space
 - Implements retention policy to remove old backups
 - Provides detailed logging
+- Backs up both container data and bind mounts
 
 Usage:
 ```bash
@@ -196,27 +211,27 @@ Options:
 
 ### setup-cron.sh
 
-Sets up automated daily backups:
+Sets up automated backups every 6 hours:
 - Creates a cron job (Linux) or launchd task (macOS)
 - Configures log rotation
-- Runs daily at 2:00 AM by default
+- Runs at 00:00, 06:00, 12:00, and 18:00 by default
 
-Usage (must be run as root):
+Usage:
 ```bash
-sudo ./scripts/setup-cron.sh
+./scripts/setup-cron.sh
 ```
 
 ## Backup and Recovery
 
 ### Automated Backups
 
-To set up automated daily backups on your local machine:
+To set up automated backups on your local machine that run every 6 hours:
 
 ```bash
-sudo ./scripts/setup-cron.sh
+./scripts/setup-cron.sh
 ```
 
-This will create a cron job that runs the backup script daily at 2:00 AM.
+This will create a job that runs the backup script at 00:00, 06:00, 12:00, and 18:00 every day.
 
 ### Manual Backups
 
@@ -263,16 +278,22 @@ To update both:
 ### Passwords and Encryption Keys
 
 - The setup script automatically generates strong random passwords and encryption keys
-- All sensitive information is stored in the `.env` file
+- Database password is stored as a Docker secret for improved security
+- All sensitive information is stored in the `.env` file and `.secrets` directory
 - The `.env` file permissions are set to 600 (readable only by the owner)
+- The `.secrets` directory permissions are set to 700 (accessible only by the owner)
 
 ### Network Isolation
 
-The services are configured with a dedicated Docker network for isolation.
+The services are configured with a dedicated Docker network for isolation, with a specific subnet for predictable addressing.
 
 ### Resource Limits
 
-Resource limits are set to prevent resource exhaustion.
+Resource limits and reservations are set to prevent resource exhaustion and ensure service availability.
+
+### Logging Configuration
+
+All containers have log rotation configured to prevent log files from consuming too much disk space.
 
 ## Troubleshooting
 
@@ -306,7 +327,7 @@ docker compose logs -f n8n
 
 - Ensure the backup directory is writable
 - Check available disk space
-- View the backup log at `backups/backup.log`
+- View the backup log at `logs/backup.log`
 
 **Restore fails**
 
@@ -319,6 +340,12 @@ docker compose logs -f n8n
 - Create a manual backup before retrying
 - Check compatibility between n8n version and PostgreSQL version
 - View the update log for specific errors
+
+**Data persistence issues**
+
+- Check if the data directories exist and have the correct permissions
+- Verify that the bind mounts are properly configured in `docker-compose.yml`
+- Ensure the user running Docker has permission to access the data directories
 
 ## Final Notes
 

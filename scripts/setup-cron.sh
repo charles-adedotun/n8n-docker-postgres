@@ -31,12 +31,6 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if script is run as root
-if [ "$(id -u)" -ne 0 ]; then
-    log_error "This script must be run as root to set up cron jobs"
-    exit 1
-fi
-
 # Load environment variables
 if [ -f "$ENV_FILE" ]; then
     source "$ENV_FILE"
@@ -62,9 +56,11 @@ if [ ! -d "$LOG_DIR" ]; then
     chmod 700 "$LOG_DIR"  # Set proper permissions
 fi
 
-# Set up log rotation
-log_info "Setting up log rotation..."
-cat > /etc/logrotate.d/n8n << EOF
+# User-level log rotation using logrotate if available, otherwise just log a note
+if command -v logrotate &> /dev/null; then
+    log_info "Setting up log rotation..."
+    mkdir -p "$HOME/.config/logrotate"
+    cat > "$HOME/.config/logrotate/n8n" << EOF
 $PROJECT_DIR/logs/*.log {
     daily
     missingok
@@ -72,7 +68,7 @@ $PROJECT_DIR/logs/*.log {
     compress
     delaycompress
     notifempty
-    create 640 root root
+    create 640 $(id -un) $(id -gn)
 }
 $PROJECT_DIR/backups/backup.log {
     daily
@@ -81,36 +77,31 @@ $PROJECT_DIR/backups/backup.log {
     compress
     delaycompress
     notifempty
-    create 640 root root
+    create 640 $(id -un) $(id -gn)
 }
 EOF
-log_info "Log rotation configured"
-
-# Set up cron job for daily backups
-log_info "Setting up daily backup cron job..."
+    log_info "Log rotation configured. You may need to set up a personal cron job to run logrotate."
+else
+    log_info "Logrotate not found. Log files will need to be managed manually."
+fi
 
 # Default to 2 AM if not specified
 BACKUP_HOUR=2
 BACKUP_MINUTE=0
 
-# Create cron job
-CRON_ENTRY="$BACKUP_MINUTE $BACKUP_HOUR * * * $BACKUP_SCRIPT >> $CRON_LOG 2>&1"
-
-# Check if cron job already exists
-if crontab -l 2>/dev/null | grep -q "$BACKUP_SCRIPT"; then
-    log_warning "Cron job for n8n backup already exists. Skipping."
-else
-    # Add cron job
-    (crontab -l 2>/dev/null || echo "") | { cat; echo "$CRON_ENTRY"; } | crontab -
-    log_info "Cron job added for daily backups at $BACKUP_HOUR:$BACKUP_MINUTE AM"
-fi
+# On non-macOS systems, we'd set up a cron job here
+# But we'll skip this for macOS and use launchd instead
 
 # Check if it's a Mac system and configure launchd instead of cron
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    log_info "macOS detected. Setting up launchd job instead of cron..."
+    log_info "macOS detected. Setting up user-level launchd job..."
     
-    # Create launchd plist file
-    PLIST_FILE="/Library/LaunchDaemons/com.n8n.backup.plist"
+    # Create user-level LaunchAgents directory if it doesn't exist
+    LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
+    mkdir -p "$LAUNCH_AGENTS_DIR"
+    
+    # Create launchd plist file at user level
+    PLIST_FILE="$LAUNCH_AGENTS_DIR/com.n8n.backup.plist"
     
     cat > "$PLIST_FILE" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -124,16 +115,38 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         <string>$BACKUP_SCRIPT</string>
     </array>
     <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>$BACKUP_HOUR</integer>
-        <key>Minute</key>
-        <integer>$BACKUP_MINUTE</integer>
-    </dict>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>0</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>6</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>12</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>18</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+    </array>
     <key>StandardOutPath</key>
     <string>$CRON_LOG</string>
     <key>StandardErrorPath</key>
     <string>$CRON_LOG</string>
+    <key>RunAtLoad</key>
+    <true/>
 </dict>
 </plist>
 EOF
@@ -141,16 +154,17 @@ EOF
     # Set proper permissions on the plist file
     chmod 644 "$PLIST_FILE"
     
+    # Unload the job first if it exists (to prevent errors)
+    launchctl unload "$PLIST_FILE" 2>/dev/null || true
+    
     # Load the launchd job
     launchctl load "$PLIST_FILE"
     
-    log_info "launchd job set up for daily backups at $BACKUP_HOUR:$BACKUP_MINUTE AM"
+    log_info "User-level launchd job set up for backups every 6 hours (at 00:00, 06:00, 12:00, and 18:00)"
     log_info "Check job status with: launchctl list | grep com.n8n.backup"
-else
-    log_info "Check cron job with: crontab -l"
 fi
 
 log_info "Automated backup setup complete!"
-log_info "Backups will run daily at $BACKUP_HOUR:$BACKUP_MINUTE AM"
+log_info "Backups will run every 6 hours (at 00:00, 06:00, 12:00, and 18:00)"
 log_info "Logs will be stored in $CRON_LOG"
 log_info "Backups will be stored in $PROJECT_DIR/backups"

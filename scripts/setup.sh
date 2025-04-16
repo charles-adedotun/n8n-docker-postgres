@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$PROJECT_DIR/.env"
 DOCKER_COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
+SECRETS_DIR="$PROJECT_DIR/.secrets"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -118,12 +119,47 @@ create_directories() {
         log_info "Created logs directory."
     fi
     
+    # Create data directories for bind mounts
+    if [ ! -d "$PROJECT_DIR/data/n8n" ]; then
+        mkdir -p "$PROJECT_DIR/data/n8n"
+        log_info "Created n8n data directory."
+    fi
+    
+    if [ ! -d "$PROJECT_DIR/data/postgres" ]; then
+        mkdir -p "$PROJECT_DIR/data/postgres"
+        log_info "Created PostgreSQL data directory."
+    fi
+    
+    if [ ! -d "$PROJECT_DIR/data/pgadmin" ]; then
+        mkdir -p "$PROJECT_DIR/data/pgadmin"
+        log_info "Created pgAdmin data directory."
+    fi
+    
+    # Create secrets directory if it doesn't exist
+    if [ ! -d "$SECRETS_DIR" ]; then
+        mkdir -p "$SECRETS_DIR"
+        log_info "Created secrets directory."
+    fi
+    
     # Set proper permissions
     chmod 700 "$PROJECT_DIR/backups"
     chmod 700 "$PROJECT_DIR/logs"
+    chmod 700 "$PROJECT_DIR/data" "$PROJECT_DIR/data/n8n" "$PROJECT_DIR/data/postgres" "$PROJECT_DIR/data/pgadmin"
+    chmod 700 "$SECRETS_DIR"
     chmod 600 "$ENV_FILE"
     
     log_info "✅ Directories created and permissions set."
+}
+
+setup_secrets() {
+    log_info "Setting up secrets..."
+    
+    # Create PostgreSQL password secret file
+    source "$ENV_FILE"
+    echo -n "$POSTGRES_PASSWORD" > "$SECRETS_DIR/postgres_password"
+    chmod 600 "$SECRETS_DIR/postgres_password"
+    
+    log_info "✅ Secrets configured."
 }
 
 start_services() {
@@ -184,8 +220,10 @@ log_info "Starting n8n setup..."
 check_dependencies
 validate_env_file
 create_directories
+setup_secrets
 start_services
 verify_startup
 
 log_info "n8n setup complete! You can access n8n at http://localhost:5678"
-log_info "Remember to keep your .env file secure as it contains sensitive information."
+log_info "pgAdmin is available at http://localhost:5050"
+log_info "Remember to keep your .env file and secrets directory secure as they contain sensitive information."

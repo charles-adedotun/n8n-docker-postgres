@@ -11,6 +11,7 @@ ENV_FILE="$PROJECT_DIR/.env"
 BACKUP_DIR="$PROJECT_DIR/backups"
 LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/backup.log"
+DATA_DIR="$PROJECT_DIR/data"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -90,11 +91,38 @@ log_info "PostgreSQL database backup completed"
 
 # Backup n8n data directory
 log_info "Backing up n8n data directory..."
-mkdir -p "$TEMP_DIR/n8n_data"
-if ! docker compose -f "$PROJECT_DIR/docker-compose.yml" cp n8n:/home/node/.n8n/. "$TEMP_DIR/n8n_data/"; then
-    log_warning "Failed to backup n8n data directory. This may be due to container not running."
+if [ -d "$DATA_DIR/n8n" ]; then
+    mkdir -p "$TEMP_DIR/n8n_data"
+    if ! cp -r "$DATA_DIR/n8n/." "$TEMP_DIR/n8n_data/"; then
+        log_warning "Failed to backup n8n data directory directly. Trying from container..."
+        # Try to backup from container if direct file access fails
+        if ! docker compose -f "$PROJECT_DIR/docker-compose.yml" cp n8n:/home/node/.n8n/. "$TEMP_DIR/n8n_data/"; then
+            log_warning "Failed to backup n8n data directory from container. This may be due to container not running."
+        else
+            log_info "n8n data directory backup from container completed"
+        fi
+    else
+        log_info "n8n data directory backup completed"
+    fi
 else
-    log_info "n8n data directory backup completed"
+    log_warning "n8n data directory not found at $DATA_DIR/n8n. Trying from container..."
+    mkdir -p "$TEMP_DIR/n8n_data"
+    if ! docker compose -f "$PROJECT_DIR/docker-compose.yml" cp n8n:/home/node/.n8n/. "$TEMP_DIR/n8n_data/"; then
+        log_warning "Failed to backup n8n data directory from container. This may be due to container not running."
+    else
+        log_info "n8n data directory backup from container completed"
+    fi
+fi
+
+# Backup pgAdmin data
+log_info "Backing up pgAdmin data directory..."
+if [ -d "$DATA_DIR/pgadmin" ]; then
+    mkdir -p "$TEMP_DIR/pgadmin_data"
+    if ! cp -r "$DATA_DIR/pgadmin/." "$TEMP_DIR/pgadmin_data/"; then
+        log_warning "Failed to backup pgAdmin data directory. This is not critical."
+    else
+        log_info "pgAdmin data directory backup completed"
+    fi
 fi
 
 # Create compressed archive
